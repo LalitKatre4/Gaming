@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Play, RotateCcw, Pause, Trophy, ArrowUp, ArrowDown, ArrowLeft, ArrowRight, Zap } from 'lucide-react';
+import { Play, RotateCcw, Pause, Trophy, ArrowUp, ArrowDown, ArrowLeft, ArrowRight, Zap, Smartphone } from 'lucide-react';
 import { sounds } from '../utils/audio';
 import { getBestScore, saveBestScore } from '../utils/storage';
 import { Confetti } from '../components/Confetti';
@@ -11,6 +11,7 @@ interface Point {
 }
 
 const GRID_SIZE = 20; // 20x20 grid
+const SWIPE_THRESHOLD = 20; // pixels to register directional swipe
 
 export const SnakeGame: React.FC = () => {
   const [snake, setSnake] = useState<Point[]>([
@@ -28,12 +29,14 @@ export const SnakeGame: React.FC = () => {
   const [isPlaying, setIsPlaying] = useState<boolean>(false);
   const [speedMode, setSpeedMode] = useState<'normal' | 'fast' | 'turbo'>('normal');
   const [showConfetti, setShowConfetti] = useState<boolean>(false);
+  const [showDpad, setShowDpad] = useState<boolean>(false);
 
   const directionRef = useRef<Direction>('UP');
   const snakeRef = useRef<Point[]>(snake);
   const foodRef = useRef<Point>(food);
   const bonusFoodRef = useRef<Point | null>(bonusFood);
   const gameLoopRef = useRef<number | null>(null);
+  const touchStartRef = useRef<{ x: number; y: number } | null>(null);
 
   // Sync refs
   useEffect(() => {
@@ -92,6 +95,7 @@ export const SnakeGame: React.FC = () => {
     setIsPaused(false);
     setIsPlaying(true);
     setShowConfetti(false);
+    touchStartRef.current = null;
     sounds.playMove();
   };
 
@@ -105,8 +109,10 @@ export const SnakeGame: React.FC = () => {
     ) {
       return; // prevent reversing into oneself
     }
-    setDirection(newDir);
-    sounds.playMove();
+    if (newDir !== current) {
+      setDirection(newDir);
+      sounds.playMove();
+    }
   }, []);
 
   // Keyboard navigation
@@ -163,6 +169,42 @@ export const SnakeGame: React.FC = () => {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isPlaying, isPaused, isGameOver, changeDirection]);
 
+  // Touch Swipe Gesture Handlers directly on the board
+  const handleTouchStart = (e: React.TouchEvent<HTMLDivElement>) => {
+    if (!isPlaying || isPaused || isGameOver) return;
+    const touch = e.touches[0];
+    touchStartRef.current = { x: touch.clientX, y: touch.clientY };
+  };
+
+  const handleTouchMove = (e: React.TouchEvent<HTMLDivElement>) => {
+    if (!isPlaying || isPaused || isGameOver || !touchStartRef.current) return;
+    const touch = e.touches[0];
+    const dx = touch.clientX - touchStartRef.current.x;
+    const dy = touch.clientY - touchStartRef.current.y;
+
+    if (Math.abs(dx) >= SWIPE_THRESHOLD || Math.abs(dy) >= SWIPE_THRESHOLD) {
+      if (Math.abs(dx) > Math.abs(dy)) {
+        if (dx > 0) {
+          changeDirection('RIGHT');
+        } else {
+          changeDirection('LEFT');
+        }
+      } else {
+        if (dy > 0) {
+          changeDirection('DOWN');
+        } else {
+          changeDirection('UP');
+        }
+      }
+      // Re-anchor touch start point to enable continuous smooth directional turns in one stroke
+      touchStartRef.current = { x: touch.clientX, y: touch.clientY };
+    }
+  };
+
+  const handleTouchEnd = () => {
+    touchStartRef.current = null;
+  };
+
   // Main game tick
   useEffect(() => {
     if (!isPlaying || isPaused || isGameOver) return;
@@ -218,7 +260,7 @@ export const SnakeGame: React.FC = () => {
         const nextFood = spawnFood(currentSnake);
         setFood(nextFood);
 
-        // 20% chance to spawn bonus food if none active
+        // 25% chance to spawn bonus food if none active
         if (!currBonus && Math.random() < 0.25) {
           setBonusFood(spawnFood(currentSnake));
         }
@@ -290,8 +332,14 @@ export const SnakeGame: React.FC = () => {
         </div>
       </div>
 
-      {/* Arena Canvas Container */}
-      <div className="relative w-full aspect-square max-w-[440px] bg-[#0E0F0D] rounded-2xl border-2 border-white/10 overflow-hidden shadow-2xl flex items-center justify-center">
+      {/* Arena Canvas Container with native touch-none swipe handling */}
+      <div
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+        onTouchCancel={handleTouchEnd}
+        className="relative w-full aspect-square max-w-[420px] bg-[#0E0F0D] rounded-2xl border-2 border-white/10 overflow-hidden shadow-2xl flex items-center justify-center touch-none select-none"
+      >
         {/* Grid cells rendering */}
         <div 
           className="w-full h-full grid"
@@ -312,7 +360,7 @@ export const SnakeGame: React.FC = () => {
             return (
               <div
                 key={index}
-                className="relative flex items-center justify-center"
+                className="relative flex items-center justify-center pointer-events-none"
               >
                 {isHead && (
                   <div className="w-[86%] h-[86%] rounded-sm bg-[#B7FF35] shadow-[0_0_12px_#B7FF35] flex items-center justify-center transition-transform duration-75">
@@ -335,17 +383,17 @@ export const SnakeGame: React.FC = () => {
 
         {/* Start / Paused / Game Over Overlays */}
         {!isPlaying && !isGameOver && (
-          <div className="absolute inset-0 bg-black/85 backdrop-blur-xs flex flex-col items-center justify-center p-6 text-center">
+          <div className="absolute inset-0 bg-black/85 backdrop-blur-xs flex flex-col items-center justify-center p-6 text-center z-10">
             <div className="w-14 h-14 rounded-2xl bg-[#B7FF35]/10 border border-[#B7FF35]/30 flex items-center justify-center mb-4 text-[#B7FF35]">
               <Zap className="w-7 h-7" />
             </div>
             <h3 className="text-xl font-bold text-white mb-2">Neon Snake</h3>
             <p className="text-neutral-400 text-xs max-w-xs mb-6">
-              Use arrow keys or touch D-Pad to steer. Eat green and bonus amber pellets to grow.
+              Swipe anywhere on the board or use Arrow/WASD keys to steer. Gather green and golden pellets to grow.
             </p>
             <button
               onClick={startGame}
-              className="px-6 py-3 bg-[#B7FF35] hover:bg-[#a6ec27] text-black font-semibold text-sm rounded-xl flex items-center gap-2 transition-transform active:scale-95 shadow-[0_0_20px_rgba(183,255,53,0.3)]"
+              className="px-6 py-3 bg-[#B7FF35] hover:bg-[#a6ec27] text-black font-semibold text-sm rounded-xl flex items-center gap-2 transition-transform active:scale-95 shadow-[0_0_20px_rgba(183,255,53,0.3)] cursor-pointer"
             >
               <Play className="w-4 h-4 fill-black" /> Start Playing
             </button>
@@ -353,12 +401,12 @@ export const SnakeGame: React.FC = () => {
         )}
 
         {isPaused && (
-          <div className="absolute inset-0 bg-black/75 backdrop-blur-xs flex flex-col items-center justify-center p-6">
+          <div className="absolute inset-0 bg-black/75 backdrop-blur-xs flex flex-col items-center justify-center p-6 z-10">
             <h3 className="text-xl font-bold text-white mb-2">Game Paused</h3>
-            <p className="text-xs text-neutral-400 mb-4">Press Space to resume</p>
+            <p className="text-xs text-neutral-400 mb-4">Press Resume or Space to continue</p>
             <button
               onClick={() => setIsPaused(false)}
-              className="px-5 py-2.5 bg-neutral-800 hover:bg-neutral-700 text-white text-xs font-semibold rounded-lg border border-white/10"
+              className="px-5 py-2.5 bg-neutral-800 hover:bg-neutral-700 text-white text-xs font-semibold rounded-lg border border-white/10 cursor-pointer"
             >
               Resume
             </button>
@@ -366,7 +414,7 @@ export const SnakeGame: React.FC = () => {
         )}
 
         {isGameOver && (
-          <div className="absolute inset-0 bg-black/90 backdrop-blur-xs flex flex-col items-center justify-center p-6 text-center">
+          <div className="absolute inset-0 bg-black/90 backdrop-blur-xs flex flex-col items-center justify-center p-6 text-center z-10">
             <div className="text-red-400 font-mono text-xs uppercase tracking-widest mb-1">Collision Detected</div>
             <h3 className="text-2xl font-bold text-white mb-3">Game Over</h3>
             <div className="bg-[#171816] border border-white/10 rounded-xl p-4 w-56 mb-5">
@@ -378,7 +426,7 @@ export const SnakeGame: React.FC = () => {
             </div>
             <button
               onClick={startGame}
-              className="px-6 py-3 bg-[#B7FF35] hover:bg-[#a6ec27] text-black font-semibold text-sm rounded-xl flex items-center gap-2 transition-transform active:scale-95"
+              className="px-6 py-3 bg-[#B7FF35] hover:bg-[#a6ec27] text-black font-semibold text-sm rounded-xl flex items-center gap-2 transition-transform active:scale-95 cursor-pointer shadow-[0_0_20px_rgba(183,255,53,0.3)]"
             >
               <RotateCcw className="w-4 h-4" /> Play Again
             </button>
@@ -386,63 +434,87 @@ export const SnakeGame: React.FC = () => {
         )}
       </div>
 
-      {/* Action Controls & Mobile D-Pad */}
+      {/* Action Controls & Mobile Controls Bar */}
       <div className="w-full mt-4 flex items-center justify-between">
         <div className="flex items-center gap-2">
           {isPlaying && (
             <button
               onClick={() => setIsPaused((p) => !p)}
-              className="px-3 py-2 bg-[#171816] hover:bg-[#20221E] text-neutral-300 text-xs font-medium rounded-lg border border-white/10 flex items-center gap-1.5 transition-colors"
+              className="px-3 py-2 bg-[#171816] hover:bg-[#20221E] text-neutral-300 text-xs font-medium rounded-lg border border-white/10 flex items-center gap-1.5 transition-colors cursor-pointer"
             >
               <Pause className="w-3.5 h-3.5" /> {isPaused ? 'Resume' : 'Pause'}
             </button>
           )}
           <button
             onClick={startGame}
-            className="px-3 py-2 bg-[#171816] hover:bg-[#20221E] text-neutral-300 text-xs font-medium rounded-lg border border-white/10 flex items-center gap-1.5 transition-colors"
+            className="px-3 py-2 bg-[#171816] hover:bg-[#20221E] text-neutral-300 text-xs font-medium rounded-lg border border-white/10 flex items-center gap-1.5 transition-colors cursor-pointer"
           >
             <RotateCcw className="w-3.5 h-3.5" /> Restart (R)
           </button>
         </div>
 
-        <div className="text-[11px] font-mono text-neutral-500 hidden sm:block">
-          Controls: Arrow keys / WASD
+        {/* Right side: Desktop hint / Mobile D-Pad toggle */}
+        <div className="flex items-center gap-2">
+          <span className="text-[11px] font-mono text-neutral-500 hidden sm:inline">
+            Arrow keys / WASD
+          </span>
+          <button
+            onClick={() => setShowDpad((v) => !v)}
+            title="Toggle optional on-screen buttons"
+            className={`sm:hidden px-2.5 py-1.5 rounded-lg border text-[11px] font-mono flex items-center gap-1.5 transition-colors cursor-pointer ${
+              showDpad
+                ? 'bg-[#B7FF35]/15 border-[#B7FF35]/40 text-[#B7FF35]'
+                : 'bg-[#171816] border-white/10 text-neutral-400 hover:text-white'
+            }`}
+          >
+            <Smartphone className="w-3 h-3" />
+            <span>{showDpad ? 'Hide Buttons' : 'Mini D-Pad'}</span>
+          </button>
         </div>
       </div>
 
-      {/* Responsive On-Screen D-Pad for Mobile Touch */}
-      <div className="mt-4 flex flex-col items-center sm:hidden">
-        <button
-          onClick={() => changeDirection('UP')}
-          aria-label="Move Up"
-          className="w-12 h-12 rounded-xl bg-[#171816] active:bg-[#B7FF35] active:text-black border border-white/10 flex items-center justify-center text-neutral-300 mb-1"
-        >
-          <ArrowUp className="w-5 h-5" />
-        </button>
-        <div className="flex gap-4">
-          <button
-            onClick={() => changeDirection('LEFT')}
-            aria-label="Move Left"
-            className="w-12 h-12 rounded-xl bg-[#171816] active:bg-[#B7FF35] active:text-black border border-white/10 flex items-center justify-center text-neutral-300"
-          >
-            <ArrowLeft className="w-5 h-5" />
-          </button>
-          <button
-            onClick={() => changeDirection('DOWN')}
-            aria-label="Move Down"
-            className="w-12 h-12 rounded-xl bg-[#171816] active:bg-[#B7FF35] active:text-black border border-white/10 flex items-center justify-center text-neutral-300"
-          >
-            <ArrowDown className="w-5 h-5" />
-          </button>
-          <button
-            onClick={() => changeDirection('RIGHT')}
-            aria-label="Move Right"
-            className="w-12 h-12 rounded-xl bg-[#171816] active:bg-[#B7FF35] active:text-black border border-white/10 flex items-center justify-center text-neutral-300"
-          >
-            <ArrowRight className="w-5 h-5" />
-          </button>
-        </div>
+      {/* Touch Interaction Guide (Mobile) */}
+      <div className="w-full mt-2 text-center sm:hidden">
+        <span className="text-[11px] font-mono text-neutral-500">
+          💡 Tip: Swipe directly on the game board in any direction
+        </span>
       </div>
+
+      {/* Optional Compact Secondary D-Pad for Mobile (clean, smaller, non-intrusive) */}
+      {showDpad && (
+        <div className="mt-3 flex flex-col items-center sm:hidden animate-in fade-in duration-150">
+          <button
+            onClick={() => changeDirection('UP')}
+            aria-label="Move Up"
+            className="w-10 h-10 rounded-xl bg-[#171816] active:bg-[#B7FF35] active:text-black border border-white/10 flex items-center justify-center text-neutral-300 mb-1 cursor-pointer transition-colors"
+          >
+            <ArrowUp className="w-4 h-4" />
+          </button>
+          <div className="flex gap-3">
+            <button
+              onClick={() => changeDirection('LEFT')}
+              aria-label="Move Left"
+              className="w-10 h-10 rounded-xl bg-[#171816] active:bg-[#B7FF35] active:text-black border border-white/10 flex items-center justify-center text-neutral-300 cursor-pointer transition-colors"
+            >
+              <ArrowLeft className="w-4 h-4" />
+            </button>
+            <button
+              onClick={() => changeDirection('DOWN')}
+              aria-label="Move Down"
+              className="w-10 h-10 rounded-xl bg-[#171816] active:bg-[#B7FF35] active:text-black border border-white/10 flex items-center justify-center text-neutral-300 cursor-pointer transition-colors"
+            >
+              <ArrowDown className="w-4 h-4" />
+            </button>
+            <button
+              onClick={() => changeDirection('RIGHT')}
+              aria-label="Move Right"
+              className="w-10 h-10 rounded-xl bg-[#171816] active:bg-[#B7FF35] active:text-black border border-white/10 flex items-center justify-center text-neutral-300 cursor-pointer transition-colors"
+            >
+              <ArrowRight className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

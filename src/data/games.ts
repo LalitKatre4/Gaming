@@ -30,7 +30,7 @@ export const GAMES_CATALOG: GameInfo[] = [
     category: 'arcade',
     categoryLabel: 'Arcade',
     estimatedTime: '3-5 min',
-    controlsSummary: 'Arrow Keys / WASD / D-Pad',
+    controlsSummary: 'Swipe / Arrows / WASD',
     accentColor: '#B7FF35', // Neon Lime
     badge: 'Popular',
     scoreType: 'points',
@@ -45,10 +45,11 @@ export const GAMES_CATALOG: GameInfo[] = [
       'Speed scales up slightly as your score milestone increases.'
     ],
     controls: [
+      { key: 'Swipe Gestures', action: 'Swipe directly on board (mobile)' },
       { key: 'Arrow Keys / WASD', action: 'Change snake movement direction' },
       { key: 'Space', action: 'Pause / Resume game' },
       { key: 'R', action: 'Instant restart' },
-      { key: 'Touch D-Pad', action: 'Mobile directional controls' },
+      { key: 'Mini D-Pad', action: 'Optional on-screen directional buttons' },
     ],
     route: '/games/snake',
   },
