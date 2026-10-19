@@ -1,0 +1,6 @@
+{
+  "name": "GameZone",
+  "description": "Play instant free browser games online. No downloads, zero installs. Featuring Snake, 2048, Memory Match, Tic-Tac-Toe, Typing Speed, and more with instant controls and high scores.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
