@@ -12,59 +12,27 @@ export const AdsterraBanner300x250: React.FC<{ className?: string }> = ({ classN
     const container = containerRef.current;
     if (!container) return;
 
-    // Reset container to avoid duplicate iframes on navigation or re-render
-    container.innerHTML = '';
+    const scriptSrc = 'https://bauval.org/22/1d37e6f4fcafd623c40c68329065cbd2';
 
-    const iframe = document.createElement('iframe');
-    iframe.width = '300';
-    iframe.height = '250';
-    iframe.title = 'Sponsored Advertisement';
-    iframe.style.border = 'none';
-    iframe.style.overflow = 'hidden';
-    iframe.style.width = '300px';
-    iframe.style.height = '250px';
-    iframe.scrolling = 'no';
-    iframe.setAttribute('loading', 'lazy');
-
-    container.appendChild(iframe);
-
-    // Populate the iframe with the exact Adsterra configuration and script
-    const doc = iframe.contentWindow?.document || iframe.contentDocument;
-    if (doc) {
-      doc.open();
-      doc.write(`
-        <!DOCTYPE html>
-        <html lang="en">
-          <head>
-            <meta charset="utf-8" />
-            <style>
-              body {
-                margin: 0;
-                padding: 0;
-                overflow: hidden;
-                display: flex;
-                justify-content: center;
-                align-items: center;
-                background-color: transparent;
-              }
-            </style>
-          </head>
-          <body>
-            <script type="text/javascript">
-              atOptions = {
-                'key' : '1d37e6f4fcafd623c40c68329065cbd2',
-                'format' : 'iframe',
-                'height' : 250,
-                'width' : 300,
-                'params' : {}
-              };
-            </script>
-            <script type="text/javascript" src="https://bauval.org/22/1d37e6f4fcafd623c40c68329065cbd2"></script>
-          </body>
-        </html>
-      `);
-      doc.close();
+    // Prevent duplicate script injection during React re-renders or game navigation
+    if (container.querySelector(`script[src="${scriptSrc}"]`)) {
+      return;
     }
+
+    // Set atOptions on window object following exact Adsterra specifications
+    (window as unknown as { atOptions: Record<string, unknown> }).atOptions = {
+      key: '1d37e6f4fcafd623c40c68329065cbd2',
+      format: 'iframe',
+      height: 250,
+      width: 300,
+      params: {},
+    };
+
+    // Load the exact Adsterra script directly without custom nested iframes
+    const script = document.createElement('script');
+    script.type = 'text/javascript';
+    script.src = scriptSrc;
+    container.appendChild(script);
 
     return () => {
       if (container) {

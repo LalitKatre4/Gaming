@@ -12,24 +12,27 @@ export const AdsterraNativeBanner: React.FC<{ className?: string }> = ({ classNa
     const container = containerRef.current;
     if (!container) return;
 
-    // Clear previous children on re-render to avoid duplicates
-    container.innerHTML = '';
+    const scriptSrc = 'https://bauval.org/21/72d048b4a022dc8a96cda3e044790928';
 
-    // Create the required Adsterra target container div
-    const adTarget = document.createElement('div');
-    adTarget.id = 'container-72d048b4a022dc8a96cda3e044790928';
-    container.appendChild(adTarget);
+    // Prevent duplicate script injection during React re-renders
+    if (container.querySelector(`script[src="${scriptSrc}"]`)) {
+      return;
+    }
 
-    // Create and append the exact Adsterra script
-    const script = document.createElement('script');
-    script.async = true;
-    script.setAttribute('data-cfasync', 'false');
-    script.src = 'https://bauval.org/21/72d048b4a022dc8a96cda3e044790928';
-    container.appendChild(script);
+    // Verify container exists in DOM before appending the script
+    const target = document.getElementById('container-72d048b4a022dc8a96cda3e044790928');
+    if (target) {
+      const script = document.createElement('script');
+      script.async = true;
+      script.setAttribute('data-cfasync', 'false');
+      script.src = scriptSrc;
+      container.appendChild(script);
+    }
 
     return () => {
-      if (container) {
-        container.innerHTML = '';
+      const script = container.querySelector(`script[src="${scriptSrc}"]`);
+      if (script) {
+        script.remove();
       }
     };
   }, []);
@@ -45,7 +48,10 @@ export const AdsterraNativeBanner: React.FC<{ className?: string }> = ({ classNa
       <div
         ref={containerRef}
         className="w-full min-h-[110px] rounded-xl bg-[#141513]/60 border border-white/10 p-3 overflow-hidden flex flex-col items-center justify-center text-center"
-      />
+      >
+        {/* Container rendered directly in React JSX */}
+        <div id="container-72d048b4a022dc8a96cda3e044790928" />
+      </div>
     </aside>
   );
 };
