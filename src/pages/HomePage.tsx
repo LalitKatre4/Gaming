@@ -4,6 +4,7 @@ import { GameCategory, GAMES_CATALOG, GameInfo } from '../data/games';
 import { HeroSection } from '../components/HeroSection';
 import { GameCard } from '../components/GameCard';
 import { AdSlot } from '../components/AdSlot';
+import { AdsterraNativeBanner } from '../components/AdsterraNativeBanner';
 import { getRecentlyPlayed, getFavorites } from '../utils/storage';
 
 interface HomePageProps {
@@ -201,13 +202,9 @@ export const HomePage: React.FC<HomePageProps> = ({
           </div>
         )}
 
-        {/* Monetization Architecture AdSlot: disabled by default */}
+        {/* Adsterra Native Banner */}
         <div className="mt-14">
-          <AdSlot
-            placementId="home-mid-banner"
-            format="responsive"
-            enabled={false}
-          />
+          <AdsterraNativeBanner />
         </div>
 
         {/* Featured Spotlight Grid if browsing default */}

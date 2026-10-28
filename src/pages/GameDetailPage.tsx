@@ -10,6 +10,7 @@ import { WhackAMoleGame } from '../games/WhackAMoleGame';
 import { ReactionTimeGame } from '../games/ReactionTimeGame';
 import { TypingSpeedGame } from '../games/TypingSpeedGame';
 import { AdSlot } from '../components/AdSlot';
+import { AdsterraBanner300x250 } from '../components/AdsterraBanner300x250';
 import { GameCard } from '../components/GameCard';
 import { recordPlayed, isFavorite, toggleFavorite, getBestScore } from '../utils/storage';
 import { sounds } from '../utils/audio';
@@ -193,12 +194,8 @@ export const GameDetailPage: React.FC<GameDetailPageProps> = ({ game, onNavigate
         </section>
       </div>
 
-      {/* Monetization Architecture AdSlot: disabled by default, clean reserved space, zero layout shift */}
-      <AdSlot
-        placementId="game-bottom-leaderboard"
-        format="leaderboard"
-        enabled={false}
-      />
+      {/* Adsterra 300x250 Banner: located safely below game controls and rules */}
+      <AdsterraBanner300x250 />
 
       {/* Related Games Recommendation */}
       <section className="mt-12 pt-8 border-t border-white/10">
